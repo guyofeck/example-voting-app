@@ -1,0 +1,102 @@
+# Base44 dev environment: every app service runs from the bind-mounted source with live reload.
+# vote (Flask) -> preview port 3000; result (Node/socket.io) -> port 8081; worker (.NET) -> background.
+
+services:
+  vote:
+    image: python:3.11-slim
+    working_dir: /usr/local/app
+    command: ["sh", "-ec", "pip install --no-cache-dir -q -r requirements.txt && exec python app.py"]
+    environment:
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./vote:/usr/local/app
+    ports:
+      - "3000:80"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost/', timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: on-failure
+
+  result:
+    image: node:18-slim
+    working_dir: /usr/local/app
+    command: ["sh", "-ec", "npm ci --no-audit --no-fund && exec npx --yes nodemon@3 -L server.js"]
+    environment:
+      - PORT=80
+    volumes:
+      - ./result:/usr/local/app
+      - result-node-modules:/usr/local/app/node_modules
+    ports:
+      - "8081:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost/',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    restart: on-failure
+
+  worker:
+    image: mcr.microsoft.com/dotnet/sdk:7.0
+    working_dir: /source
+    command: ["sh", "-ec", "dotnet restore && exec dotnet watch run --no-restore --non-interactive"]
+    environment:
+      - DOTNET_USE_POLLING_FILE_WATCHER=1
+      - DOTNET_CLI_TELEMETRY_OPTOUT=1
+    volumes:
+      - ./worker:/source
+      - worker-bin:/source/bin
+      - worker-obj:/source/obj
+      - worker-nuget:/root/.nuget/packages
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    # The worker exposes no endpoint; check that the compiled Worker process is running.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -qa 'Worker.dll' /proc/[0-9]*/cmdline 2>/dev/null || { echo 'worker process not running'; exit 1; }"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 180s
+    restart: on-failure
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - ./healthchecks:/healthchecks
+    healthcheck:
+      test: /healthchecks/redis.sh
+      interval: 5s
+    restart: on-failure
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./healthchecks:/healthchecks
+    healthcheck:
+      test: /healthchecks/postgres.sh
+      interval: 5s
+    restart: on-failure
+
+volumes:
+  db-data:
+  result-node-modules:
+  worker-bin:
+  worker-obj:
+  worker-nuget:
