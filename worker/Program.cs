@@ -132,23 +132,12 @@ namespace Worker
 
         private static void UpdateVote(NpgsqlConnection connection, string voterId, string vote)
         {
-            var command = connection.CreateCommand();
-            try
-            {
-                command.CommandText = "INSERT INTO votes (id, vote) VALUES (@id, @vote)";
-                command.Parameters.AddWithValue("@id", voterId);
-                command.Parameters.AddWithValue("@vote", vote);
-                command.ExecuteNonQuery();
-            }
-            catch (DbException)
-            {
-                command.CommandText = "UPDATE votes SET vote = @vote WHERE id = @id";
-                command.ExecuteNonQuery();
-            }
-            finally
-            {
-                command.Dispose();
-            }
+            using var command = connection.CreateCommand();
+            command.CommandText = @"INSERT INTO votes (id, vote) VALUES (@id, @vote)
+                                    ON CONFLICT (id) DO UPDATE SET vote = EXCLUDED.vote";
+            command.Parameters.AddWithValue("@id", voterId);
+            command.Parameters.AddWithValue("@vote", vote);
+            command.ExecuteNonQuery();
         }
     }
 }
