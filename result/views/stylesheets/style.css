@@ -18,10 +18,7 @@ body{
   height: 150px;
   width:2px;
   background-color: #C0C9CE;
-  position: relative;
-  top: 50%;
-  float: left;
-  transform: translateY(-50%);
+  flex: 0 0 2px;
 }
 
 #background-stats-1{
@@ -30,6 +27,10 @@ body{
 
 #background-stats-2{
   background-color: #00cbca;
+}
+
+#background-stats-3{
+  background-color: #7c8798;
 }
 
 #content-container{
@@ -62,10 +63,12 @@ body{
   background:#fff;
   box-shadow: 10px 0 0 #fff, -10px 0 0 #fff;
   vertical-align:middle;
-  font-size:40px;
+  font-size:clamp(16px, 4vw, 40px);
   font-weight: 600;
-  width: 450px;
+  width: min(690px, calc(100vw - 40px));
   height: 200px;
+  display: flex;
+  align-items: center;
 }
 #choice a{
   text-decoration:none;
@@ -76,12 +79,10 @@ body{
 }
 
 #choice .choice{
-  width: 49%;
-  position: relative;
-  top: 50%;
-  transform: translateY(-50%);
-  text-align: left;
-  padding-left: 50px;
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding: 0 8px;
 }
 
 #choice .choice .label{
@@ -90,12 +91,14 @@ body{
 
 #choice .choice.dogs{
   color: #00cbca;
-  float: right;
 }
 
 #choice .choice.cats{
   color: #2196f3;
-  float: left;
+}
+
+#choice .choice.neither{
+  color: #7c8798;
 }
 #background-stats{
   z-index:1;
@@ -107,6 +110,6 @@ body{
   transition: width 400ms ease-in-out;
   display:inline-block;
   margin-bottom:-4px;
-  width:50%;
+  width:calc(100% / 3);
   height:100%;
 }
