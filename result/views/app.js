@@ -7,6 +7,7 @@ var bg2 = document.getElementById('background-stats-2');
 app.controller('statsCtrl', function($scope){
   $scope.aPercent = 50;
   $scope.bPercent = 50;
+  $scope.total = 0;
 
   var updateScores = function(){
     socket.on('scores', function (json) {
@@ -40,8 +41,8 @@ function getPercentages(a, b) {
   var result = {};
 
   if (a + b > 0) {
-    result.a = Math.round(a / (a + b) * 100);
-    result.b = 100 - result.a;
+    result.a = a / (a + b) * 100;
+    result.b = b / (a + b) * 100;
   } else {
     result.a = result.b = 50;
   }
